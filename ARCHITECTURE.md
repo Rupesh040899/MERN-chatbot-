@@ -2,7 +2,7 @@
 
 ## System Overview
 
-The Premium AI Chatbot is built with a modern, scalable MERN-style architecture. The system follows a layered approach with clear separation of concerns.
+The Rupex AI Chatbot is built with a modern MERN-style architecture. The system follows a layered approach with clear separation of concerns.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -22,29 +22,34 @@ The Premium AI Chatbot is built with a modern, scalable MERN-style architecture.
 │         │   Utils (helpers)             │                   │
 │         └───────────────┬───────────────┘                   │
 └─────────────────────────┼──────────────────────────────────┘
-                          │ (HTTP/Axios)
+                          │ HTTP/Axios (message + history)
                           │
           ┌───────────────▼───────────────┐
           │    API Gateway (Port 5000)    │
           └───────────────┬───────────────┘
-          
+
 ┌─────────────────────────────────────────────────────────────┐
 │                  SERVER (Express.js)                        │
 │  ┌─────────────┐  ┌──────────┐  ┌──────────────┐           │
 │  │   Routes    │  │Controllers│  │ Middleware   │           │
 │  └─────────────┘  └──────────┘  └──────────────┘           │
-│         │               │               │                   │
-│         └───────────────┼───────────────┘                   │
 │                         │                                   │
 │         ┌───────────────▼───────────────┐                   │
 │         │   Services (aiProvider)       │                   │
-│         │   Utils (validation)          │                   │
 │         └───────────────┬───────────────┘                   │
 │                         │                                   │
 │         ┌───────────────▼───────────────┐                   │
 │         │   AI Providers                │                   │
-│         │   - OpenAI API                │                   │
-│         │   - Grok API (ready)          │                   │
+│         │   - Groq (llama-3.3-70b)      │ ← Active          │
+│         │   - OpenAI (gpt-4o-mini)      │                   │
+│         │   - Gemini (2.0-flash-lite)   │                   │
+│         │   - Grok (X.AI)               │                   │
+│         └───────────────────────────────┘                   │
+│                         │                                   │
+│         ┌───────────────▼───────────────┐                   │
+│         │   MongoDB Atlas               │                   │
+│         │   Database: CHATBOTDATA       │                   │
+│         │   Collection: chats           │                   │
 │         └───────────────────────────────┘                   │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -56,24 +61,25 @@ The Premium AI Chatbot is built with a modern, scalable MERN-style architecture.
 client/
 ├── src/
 │   ├── components/
-│   │   ├── ChatMessage.jsx       - Message bubble component
-│   │   ├── ChatInput.jsx         - Input field component
-│   │   ├── TypingIndicator.jsx   - Loading indicator
-│   │   ├── Sidebar.jsx           - Navigation sidebar
-│   │   ├── MessageList.jsx       - Messages container
+│   │   ├── ChatMessage.jsx        - Message bubble component
+│   │   ├── ChatInput.jsx          - Input field component
+│   │   ├── TypingIndicator.jsx    - Loading indicator
+│   │   ├── Sidebar.jsx            - Navigation sidebar
+│   │   ├── MessageList.jsx        - Messages container
 │   │   └── BackgroundGradient.jsx - Background animation
 │   ├── pages/
-│   │   └── ChatPage.jsx          - Main page layout
+│   │   └── ChatPage.jsx           - Main page layout
 │   ├── hooks/
-│   │   ├── useChat.js            - Chat logic hook
-│   │   └── useAutoScroll.js      - Auto-scroll hook
+│   │   ├── useChat.js             - Chat logic + conversation history
+│   │   └── useAutoScroll.js       - Auto-scroll hook
 │   ├── services/
-│   │   └── chatService.js        - API client
+│   │   └── chatService.js         - API client (sends message + history)
 │   ├── animations/
-│   │   └── gsapAnimations.js     - GSAP utilities
+│   │   └── gsapAnimations.js      - GSAP utilities
 │   ├── utils/
-│   │   └── helpers.js            - Helper functions
+│   │   └── helpers.js             - Helper functions
 │   ├── App.jsx
+│   ├── App.css
 │   ├── main.jsx
 │   └── index.css
 ├── index.html
@@ -90,78 +96,73 @@ client/
 - Manages overall chat state
 - Handles sidebar visibility
 - Coordinates between components
-- Manages message flow
 
 #### 2. **MessageList** (Presentational)
 - Displays messages array
 - Auto-scrolls to latest message
 - Shows typing indicator when loading
-- Handles message animations
 
 #### 3. **ChatMessage** (Presentational)
 - Renders individual message
 - Supports markdown rendering
-- Displays code syntax highlighting
-- Includes copy button
+- Code syntax highlighting
+- Copy button
 
 #### 4. **ChatInput** (Controlled Component)
 - Handles user input
 - Textarea auto-grow
-- Send button logic
-- Keyboard shortcuts (Shift+Enter)
+- Keyboard shortcuts (Shift+Enter for newline)
 
 #### 5. **Sidebar** (Modal)
 - Mobile-friendly navigation
 - New chat button
-- Chat history placeholder
-- Settings & help links
 
 #### 6. **TypingIndicator** (Presentational)
-- Animated dots
-- Shows during AI response
+- Animated dots during AI response
 
 #### 7. **BackgroundGradient** (Decoration)
-- Fixed floating gradients
-- Grid overlay
-- Animated blobs
+- Fixed floating gradient blobs
+
+### Conversation History Flow
+
+```
+User types message
+       ↓
+useChat.sendMessage(userMessage)
+       ↓
+chatService.sendChatMessage(message, messages)
+       ↓
+Format history: [{role: 'user'|'assistant', content: '...'}]
+       ↓
+POST /api/chat  { message, history[] }
+       ↓
+AI receives full context → context-aware reply
+       ↓
+messages state updated → re-render
+```
 
 ### State Management
 
-Uses React hooks for lightweight state management:
-- `useChat()` - Message state & logic
-- `useState()` - Component UI state
-- `useRef()` - DOM references
-- `useEffect()` - Side effects
-
-### Data Flow
-
-```
-User Input → ChatInput → onSend() → useChat hook
-                                       ↓
-                                  sendMessage()
-                                       ↓
-                                  chatService.js
-                                       ↓
-                                    API Call
-                                       ↓
-                                  Response
-                                       ↓
-                                  Update messages
-                                       ↓
-                                  MessageList re-render
-```
+- `useChat()` — message state, history, loading, error
+- `useState()` — component UI state
+- `useRef()` — DOM references
+- `useEffect()` — side effects
 
 ## Backend Architecture (Express.js)
 
 ### Directory Structure
 ```
 server/
+├── config/
+│   └── db.js              - MongoDB Atlas connection
+├── models/
+│   └── Chat.js            - Mongoose Chat schema
 ├── routes/
-│   └── chatRoutes.js      - API routes definition
+│   └── chatRoutes.js      - API route definitions
 ├── controllers/
-│   └── chatController.js  - Route handlers
+│   └── chatController.js  - Route handlers + DB save
 ├── services/
-│   └── aiProvider.js      - AI provider logic
+│   └── aiProvider.js      - Multi-provider AI logic
 ├── middleware/
 │   ├── errorHandler.js    - Error handling
 │   └── requestLogger.js   - Request logging
@@ -176,90 +177,65 @@ server/
 ### Request/Response Flow
 
 ```
-Request
+Request { message, history[] }
    ↓
 CORS Middleware
    ↓
-Request Logger Middleware
+Request Logger
    ↓
-Route Handler (chatRoutes.js)
+chatRoutes.js → chatController.js
    ↓
-Controller (chatController.js)
-   │
-   ├── Validate input
-   │   ↓
-   ├── Generate response (aiProvider.js)
-   │   │
-   │   └── Call AI API (OpenAI/Grok)
-   │
-   └── Return response
+Validate input
    ↓
-Error Handler Middleware
+generateAIResponse(message, history)
    ↓
-Response
+aiProvider → Groq/OpenAI/Gemini API
+   ↓
+Save { message, reply, provider } → MongoDB Atlas
+   ↓
+Return { success, message, reply, timestamp }
 ```
 
 ### AI Provider Service
 
-The `aiProvider.js` implements a plugin architecture:
+Plugin architecture — switch providers via `.env` with no code changes:
 
 ```javascript
-// Structure
-const provider = {
-  name: 'provider-name',
-  isConfigured: () => boolean,
-  generateResponse: async (message) => string
-};
-
-// Multiple providers stored in object
 const providers = {
-  openai: openaiProvider,
-  grok: grokProvider,
+  groq:   groqProvider,    // llama-3.3-70b-versatile (active)
+  openai: openaiProvider,  // gpt-4o-mini
+  gemini: geminiProvider,  // gemini-2.0-flash-lite
+  grok:   grokProvider,    // X.AI grok-1
 };
 
-// Runtime provider selection
-const activeProvider = providers[process.env.AI_PROVIDER];
-```
-
-**Benefits:**
-- Easy to add new providers
-- No code changes needed to switch providers
-- Each provider is independent
-- Fallback handling built-in
-
-### Error Handling Strategy
-
-```
-API Call → Try/Catch
-           ↓
-           ├─ Success → Format & Return
-           ├─ 401 → Unauthorized
-           ├─ 429 → Rate Limited
-           ├─ 503 → Service Unavailable
-           └─ Other → Generic Error Message
-```
-
-## Data Models
-
-### Message Object
-```javascript
+// Each provider signature:
 {
-  id: string,           // Timestamp-based ID
-  text: string,         // Message content
-  sender: string,       // 'user' | 'ai' | 'error'
-  timestamp: Date       // Message time
+  name: string,
+  isConfigured: () => boolean,
+  generateResponse: async (message, history[]) => string
 }
 ```
 
-### Chat Response
+All providers receive the full conversation history and include it in their messages array, enabling context-aware responses.
+
+## Database (MongoDB Atlas)
+
+### Connection
+- Cluster: `cluster0.i2cz6zs.mongodb.net`
+- Database: `CHATBOTDATA`
+- Connection managed via Mongoose in `server/config/db.js`
+
+### Chat Schema (`server/models/Chat.js`)
 ```javascript
 {
-  success: boolean,
-  message: string,      // User's original message
-  reply: string,        // AI response
-  timestamp: string     // ISO timestamp
+  message:   String,   // User's message
+  reply:     String,   // AI response
+  provider:  String,   // Which AI provider was used
+  timestamp: Date      // Auto-set on creation
 }
 ```
+
+Every message sent through the chatbot is automatically persisted to MongoDB Atlas.
 
 ## API Endpoints
 
@@ -267,21 +243,19 @@ API Call → Try/Catch
 ```
 Request:
 {
-  message: "User message"
+  "message": "User message",
+  "history": [
+    { "role": "user",      "content": "previous question" },
+    { "role": "assistant", "content": "previous answer" }
+  ]
 }
 
 Response:
 {
-  success: true,
-  message: "User message",
-  reply: "AI response",
-  timestamp: "2024-05-11T..."
-}
-
-Error:
-{
-  error: "Error Type",
-  message: "Error description"
+  "success": true,
+  "message": "User message",
+  "reply": "AI response",
+  "timestamp": "2026-06-18T..."
 }
 ```
 
@@ -289,201 +263,114 @@ Error:
 ```
 Response:
 {
-  status: "ok",
-  timestamp: "2024-05-11T...",
-  uptime: 123.45
+  "status": "ok",
+  "timestamp": "2026-06-18T...",
+  "uptime": 123.45
+}
+```
+
+## Data Models
+
+### Frontend Message Object
+```javascript
+{
+  id:        string,   // Timestamp-based ID
+  text:      string,   // Message content
+  sender:    string,   // 'user' | 'ai' | 'error'
+  timestamp: Date
+}
+```
+
+### MongoDB Chat Document
+```javascript
+{
+  _id:       ObjectId,
+  message:   string,
+  reply:     string,
+  provider:  string,   // 'groq' | 'openai' | 'gemini' | 'grok'
+  timestamp: Date
 }
 ```
 
 ## Animation Strategy
 
 ### GSAP Animations
-- **Message entrance**: Slide + fade from left
-- **Sidebar**: Smooth slide from left with overlay
+- **Message entrance**: Slide + fade from left/right
+- **Sidebar**: Smooth slide with overlay
 - **Input focus**: Glow effect
 - **Typing indicator**: Pulsing dots
 - **Background**: Floating gradient loops
 
-### Performance Considerations
-- Use GPU acceleration (transform, opacity)
-- Avoid animating layout properties
-- Kill animations on component unmount
-- Use GSAP timeline for complex sequences
-
 ## Styling System
 
 ### Tailwind CSS
-- Utility-first approach
-- Custom dark theme
-- Glassmorphism effects
-- Custom animations in config
-
-### CSS Variables & Custom Properties
-```css
-/* Theme colors */
---primary: #3b82f6
---secondary: #a855f7
---dark: #0f172a
-```
+- Utility-first dark theme
+- Glassmorphism effects (`backdrop-filter: blur`)
+- Custom animations
 
 ## Security Implementation
 
 ### Input Validation
-- Message length validation (1-4000 chars)
-- Type checking
+- Message length: 1–4000 characters
+- Type checking on all inputs
 - XSS protection via React
 
 ### API Security
-- CORS enabled with whitelist
-- Environment variables for secrets
+- CORS whitelist (`CORS_ORIGIN` env var)
+- All secrets in `.env` (never committed)
 - Request validation on backend
-- Error message sanitization
+- Sanitized error messages
 
-### Best Practices
-- No sensitive data in logs
-- API keys never exposed to frontend
-- HTTPS enforced in production
-- Rate limiting ready for implementation
+## Environment Configuration
 
-## Scalability Considerations
+### `server/.env`
+```
+PORT=5000
+NODE_ENV=development
+AI_PROVIDER=groq
 
-### Frontend Scaling
-- Component composition
-- Lazy loading ready
-- Service worker compatible
-- PWA potential
+GROQ_API_KEY=...
+GROQ_MODEL=llama-3.3-70b-versatile
 
-### Backend Scaling
-- Stateless design
-- Horizontal scalability ready
-- Database abstraction (no DB yet)
-- Middleware pipeline extensible
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-4o-mini
 
-### Deployment Ready
-- Environment-based configuration
-- Docker-compatible structure
-- Error tracking ready
-- Monitoring hooks in place
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-2.0-flash-lite
 
-## Future Integration Points
+MONGODB_URI=mongodb+srv://...
 
-### Database Integration
-```javascript
-// Ready for MongoDB
-// Example schema structure:
-{
-  conversations: [
-    {
-      id: ObjectId,
-      userId: string,
-      messages: [Message],
-      createdAt: Date,
-      updatedAt: Date
-    }
-  ]
-}
+CORS_ORIGIN=http://localhost:5173
 ```
 
-### Authentication
-```javascript
-// JWT middleware ready
-// Can add:
-// - User registration
-// - Login/logout
-// - Protected routes
-// - Token refresh
+### `client/.env`
 ```
-
-### Real-time Communication
-```javascript
-// WebSocket ready architecture
-// Can implement:
-// - Streaming responses
-// - Live typing indicators
-// - Push notifications
-// - Multi-user support
-```
-
-### Analytics
-```javascript
-// Logging infrastructure ready
-// Can add:
-// - User behavior tracking
-// - API performance metrics
-// - Error analytics
-// - Usage statistics
-```
-
-## Performance Metrics
-
-### Frontend
-- Bundle size: ~500KB (before gzip)
-- Time to interactive: <2s
-- Lighthouse score target: >90
-
-### Backend
-- Response time: <500ms (with AI)
-- Memory usage: <100MB
-- Concurrent users: Dependent on AI API limits
-
-## Testing Strategy
-
-### Unit Tests
-```
-/tests/unit/
-├── components/
-├── hooks/
-└── services/
-```
-
-### Integration Tests
-```
-/tests/integration/
-├── api/
-└── workflows/
-```
-
-### E2E Tests
-```
-/tests/e2e/
-├── chat-flow.test.js
-└── error-handling.test.js
+VITE_API_URL=http://localhost:5000
+VITE_API_TIMEOUT=30000
 ```
 
 ## Development Workflow
 
 ### Local Development
-1. Frontend on port 5173
-2. Backend on port 5000
-3. Hot reload enabled
-4. Console logging active
-
-### Code Organization
-- Functional components only
-- Custom hooks for logic
-- Services for API calls
-- Utils for helpers
-- Separation of concerns
+1. Backend: `cd server && npm run dev` → Port 5000
+2. Frontend: `cd client && npm run dev` → Port 5173
+3. Hot reload on both via `node --watch` and Vite HMR
 
 ### Version Control
-- .env files not committed
-- node_modules ignored
+- `.env` files not committed (gitignored)
+- `node_modules` ignored
 - Production builds not committed
-- Clean commit history
 
 ## Deployment Checklist
 
 - [ ] Environment variables configured
 - [ ] API keys secured
 - [ ] Frontend built (`npm run build`)
-- [ ] Backend tested
-- [ ] CORS origin configured
-- [ ] Error tracking enabled
-- [ ] Logging configured
-- [ ] Database (if added) migrated
-- [ ] SSL/HTTPS enabled
+- [ ] CORS origin set to production domain
+- [ ] MongoDB Atlas IP whitelist updated
+- [ ] HTTPS enabled
 - [ ] Rate limiting enabled
 
 ---
 
-This architecture provides a solid foundation for a production-ready AI chatbot with room for growth and additional features.
+Built with React + Vite (frontend), Express.js (backend), MongoDB Atlas (database), and Groq LLaMA 3.3 70B (AI).
