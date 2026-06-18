@@ -1,5 +1,6 @@
 import { generateAIResponse } from '../services/aiProvider.js';
 import { validateMessage } from '../utils/validation.js';
+import Chat from '../models/Chat.js';
 
 /**
  * Chat Controller
@@ -8,7 +9,7 @@ import { validateMessage } from '../utils/validation.js';
 export const chatController = async (req, res, next) => {
   try {
     // Extract and validate message
-    const { message } = req.body;
+    const { message, history = [] } = req.body;
 
     if (!message) {
       return res.status(400).json({
@@ -27,7 +28,10 @@ export const chatController = async (req, res, next) => {
     }
 
     // Generate AI response
-    const reply = await generateAIResponse(message);
+    const reply = await generateAIResponse(message, history);
+
+    // Save to MongoDB
+    await Chat.create({ message, reply, provider: process.env.AI_PROVIDER || 'groq' });
 
     // Return response
     res.json({

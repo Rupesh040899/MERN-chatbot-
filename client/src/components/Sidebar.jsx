@@ -41,7 +41,7 @@ export const Sidebar = ({ isOpen, onClose, onNewChat }) => {
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-white/10">
               <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                ChatBot Pro
+                Rupesh AI
               </h1>
               <button
                 onClick={onClose}

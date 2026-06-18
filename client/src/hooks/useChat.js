@@ -29,8 +29,8 @@ export const useChat = () => {
       addMessage(userMessage, 'user');
 
       try {
-        // Get AI response
-        const aiResponse = await sendChatMessage(userMessage);
+        // Get AI response — pass current messages as history
+        const aiResponse = await sendChatMessage(userMessage, messages);
         
         // Add AI response
         addMessage(aiResponse, 'ai');
@@ -45,7 +45,7 @@ export const useChat = () => {
         setLoading(false);
       }
     },
-    [addMessage]
+    [addMessage, messages]
   );
 
   const clearChat = useCallback(() => {

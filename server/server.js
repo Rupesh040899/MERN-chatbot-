@@ -4,9 +4,13 @@ import dotenv from 'dotenv';
 import chatRoutes from './routes/chatRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
+import connectDB from './config/db.js';
 
 // Load environment variables
 dotenv.config();
+
+// Connect to MongoDB
+connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

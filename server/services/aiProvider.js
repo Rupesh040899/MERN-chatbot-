@@ -23,7 +23,7 @@ const GROQ_MODEL = () => process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 const openaiProvider = {
   name: 'openai',
   isConfigured: () => !!OPENAI_API_KEY(),
-  generateResponse: async (message) => {
+  generateResponse: async (message, history = []) => {
     const apiKey = OPENAI_API_KEY();
     if (!apiKey) {
       throw new Error('OpenAI API key is not configured');
@@ -35,15 +35,9 @@ const openaiProvider = {
         {
           model: OPENAI_MODEL(),
           messages: [
-            {
-              role: 'system',
-              content:
-                'You are a helpful, friendly AI assistant. Provide clear, concise, and informative responses.',
-            },
-            {
-              role: 'user',
-              content: message,
-            },
+            { role: 'system', content: 'You are a helpful, friendly AI assistant. Provide clear, concise, and informative responses.' },
+            ...history,
+            { role: 'user', content: message },
           ],
           temperature: 0.7,
           max_tokens: 2000,
@@ -83,7 +77,7 @@ const openaiProvider = {
 const grokProvider = {
   name: 'grok',
   isConfigured: () => !!GROK_API_KEY(),
-  generateResponse: async (message) => {
+  generateResponse: async (message, history = []) => {
     const apiKey = GROK_API_KEY();
     if (!apiKey) {
       throw new Error('Grok API key is not configured');
@@ -95,15 +89,9 @@ const grokProvider = {
         {
           model: 'grok-1',
           messages: [
-            {
-              role: 'system',
-              content:
-                'You are Grok, an AI assistant. Provide clear, concise, and informative responses.',
-            },
-            {
-              role: 'user',
-              content: message,
-            },
+            { role: 'system', content: 'You are Grok, an AI assistant. Provide clear, concise, and informative responses.' },
+            ...history,
+            { role: 'user', content: message },
           ],
           temperature: 0.7,
           max_tokens: 2000,
@@ -139,7 +127,7 @@ const grokProvider = {
 const groqProvider = {
   name: 'groq',
   isConfigured: () => !!GROQ_API_KEY(),
-  generateResponse: async (message) => {
+  generateResponse: async (message, history = []) => {
     const apiKey = GROQ_API_KEY();
     if (!apiKey) throw new Error('Groq API key is not configured');
 
@@ -150,6 +138,7 @@ const groqProvider = {
           model: GROQ_MODEL(),
           messages: [
             { role: 'system', content: 'You are a helpful, friendly AI assistant. Provide clear, concise, and informative responses.' },
+            ...history,
             { role: 'user', content: message },
           ],
           temperature: 0.7,
@@ -250,11 +239,11 @@ const getProvider = () => {
  * @param {string} message - User message
  * @returns {Promise<string>} - AI response
  */
-export const generateAIResponse = async (message) => {
+export const generateAIResponse = async (message, history = []) => {
   try {
     const provider = getProvider();
     console.log(`Generating response using ${provider.name} provider...`);
-    const response = await provider.generateResponse(message);
+    const response = await provider.generateResponse(message, history);
     return response;
   } catch (error) {
     console.error('AI Provider Error:', error.message);

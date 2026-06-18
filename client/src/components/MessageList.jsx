@@ -46,7 +46,7 @@ export const MessageList = ({ messages, loading }) => {
         >
           <div>
             <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
-              Welcome to Rupesh ChatBot Pro!
+              Welcome to Rupex AI !
             </h2>
             <p className="text-gray-400 text-sm">
               Start a conversation by typing a message below

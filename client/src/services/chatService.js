@@ -19,10 +19,18 @@ const apiClient = axios.create({
  * @param {string} message - User message
  * @returns {Promise<string>} - AI response
  */
-export const sendChatMessage = async (message) => {
+export const sendChatMessage = async (message, history = []) => {
+  const formattedHistory = history
+    .filter(m => m.sender === 'user' || m.sender === 'ai')
+    .map(m => ({
+      role: m.sender === 'user' ? 'user' : 'assistant',
+      content: m.text,
+    }));
+
   try {
     const response = await apiClient.post('/api/chat', {
       message: message.trim(),
+      history: formattedHistory,
     });
     
     if (!response.data || !response.data.reply) {
